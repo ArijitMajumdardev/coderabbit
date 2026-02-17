@@ -1,4 +1,5 @@
 import ProfileForm from '@/components/settings/ProfileForm'
+import RepositoryList from '@/components/settings/RepositoryList'
 import React from 'react'
 
 const SettingsPage = () => {
@@ -10,7 +11,8 @@ const SettingsPage = () => {
           Manage your account settings and repositories
         </p>
           </div>
-          <ProfileForm/>
+          <ProfileForm />
+          <RepositoryList/>
       </div>
   )
 }
