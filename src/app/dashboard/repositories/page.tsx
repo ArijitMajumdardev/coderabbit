@@ -13,18 +13,19 @@ import { Input } from "@/components/ui/input";
 import { ExternalLink, Star, Search } from "lucide-react";
 import { useRepositories } from "@/modules/repositories/hooks/useRepositories";
 import { RepositoryListSkeleton } from "@/components/repositories/RepositoryListSkeleton";
+import { useConnectRepositories } from "@/modules/repositories/hooks/useConnectRepositories";
 
-interface Repository {
-  id: number;
-  name: string;
-  description: string | null;
-  full_name: string;
-  html_url: string;
-  stargazers_count: number;
-  language: string | null;
-  topics: string[];
-  isConnected: boolean;
-}
+// interface Repository {
+//   id: number;
+//   name: string;
+//   description: string | null;
+//   full_name: string;
+//   html_url: string;
+//   stargazers_count: number;
+//   language: string | null;
+//   topics: string[];
+//   isConnected: boolean;
+// }
 
 const RepositoryPage = () => {
   const {
@@ -34,10 +35,13 @@ const RepositoryPage = () => {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = useRepositories();
+    } = useRepositories();
+    
+    const {mutate : connectRepo} = useConnectRepositories()
+
 
   const [searchQuery, setSearchQuery] = useState("");
-    const [localConnectingId, setLocalConnectingId] = useState();
+    const [localConnectingId, setLocalConnectingId] = useState<number|null>(null);
     const observerTarget = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -97,7 +101,19 @@ const RepositoryPage = () => {
       repo.full_name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const handleConnect = (repo : any) => {};
+    const handleConnect = (repo: typeof filteredRepositories[0]) => {
+        setLocalConnectingId(repo.id)
+        connectRepo({
+            owner: repo.full_name.split("/")[0],
+            repo: repo.name,
+            githubId: repo.id
+        },
+            {
+            onSettled: () => setLocalConnectingId(null)
+        }
+        )
+    };
+    
   return (
     <div className="space-y-4 w-full">
       <div>

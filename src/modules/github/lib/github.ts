@@ -74,17 +74,71 @@ export async function fetchUserContribution(token: string, username: string) {
   }
 }
 
-
-
-export const getRepositories = async (page = 1, perPage = 10) => { 
+export const getRepositories = async (page = 1, perPage = 10) => {
   const token = await getGithubToken();
   const octokit = new Octokit({ auth: token });
-  const { data} = await octokit.rest.repos.listForAuthenticatedUser({
+  const { data } = await octokit.rest.repos.listForAuthenticatedUser({
     sort: "updated",
     direction: "desc",
     per_page: perPage,
     page: page,
-  })
+  });
 
-  return data
-}
+  return data;
+};
+
+export const createWebhook = async (owner: string, repo: string) => {
+  const token = await getGithubToken();
+  const octokit = new Octokit({ auth: token });
+
+  const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/github`;
+
+  const { data: hooks } = await octokit.rest.repos.listWebhooks({
+    owner,
+    repo,
+  });
+
+  const exsistingHook = hooks.find((h) => h.config.url === webhookUrl);
+
+  if (exsistingHook) return exsistingHook;
+
+  const { data } = await octokit.rest.repos.createWebhook({
+    owner,
+    repo,
+    config: {
+      url: webhookUrl,
+      content_type: "json",
+    },
+    events: ["pull_request"],
+  });
+
+  return data;
+};
+export const deleteWebhook = async (owner: string, repo: string) => {
+  const token = await getGithubToken();
+  const octokit = new Octokit({ auth: token });
+
+  const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/github`;
+
+  try {
+    const { data: hooks } = await octokit.rest.repos.listWebhooks({
+      owner,
+      repo,
+    });
+
+    const hookToDelete = hooks.find((h) => h.config.url === webhookUrl);
+    if (hookToDelete) {
+      await octokit.rest.repos.deleteWebhook({
+        owner,
+        repo,
+        hook_id: hookToDelete.id,
+      });
+
+      return true
+    }
+    return false
+  } catch (error) {
+    console.error("Error deleting webhook")
+    return false;
+  }
+};
