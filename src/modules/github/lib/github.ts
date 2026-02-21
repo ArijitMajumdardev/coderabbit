@@ -134,11 +134,66 @@ export const deleteWebhook = async (owner: string, repo: string) => {
         hook_id: hookToDelete.id,
       });
 
-      return true
+      return true;
     }
-    return false
+    return false;
   } catch (error) {
-    console.error("Error deleting webhook")
+    console.error("Error deleting webhook");
     return false;
   }
+};
+
+export const getRepoFileContent = async (
+  token: string,
+  owner: string,
+  repo: string,
+  path: string = "",
+):Promise<{path:string , content:string}[]> => {
+  const octokit = new Octokit({ auth: token });
+  const { data } = await octokit.rest.repos.getContent({
+    owner,
+    repo,
+    path,
+  });
+
+  console.log("data from repo", data);
+  if (!Array.isArray(data)) {
+    // then it is a file
+    if (data.type === "file" && data.content) {
+      return [
+        {
+          path: data.path,
+          content: Buffer.from(data.content, "base64").toString("utf-8"),
+        },
+      ];
+    }
+    return [];
+  }
+
+  let files: { path: string; content: string }[] = [];
+
+  for (const item of data) {
+    if (item.type === "file") {
+      const { data: fileData } = await octokit.rest.repos.getContent({
+        owner,
+        repo,
+        path: item.path,
+      });
+
+      if (!Array.isArray(fileData) && fileData.type === "file" && fileData.content) {
+        // filter out non-code files
+        if (!item.path.match(/\.(png|jpg|jpeg|gif|svg|ico|pdf|zip|tar|gz)$/i)) {
+          files.push({
+            path: item.path,
+            content: Buffer.from(fileData.content,"base64").toString("utf-8")
+          })
+        }
+      }
+    }
+    else if (item.type === "dir") {
+      const subFiles = await getRepoFileContent(token, owner, repo, item.path)
+      files=files.concat(subFiles)
+    }
+  }
+  return files
 };
